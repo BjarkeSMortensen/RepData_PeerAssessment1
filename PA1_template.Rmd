@@ -3,23 +3,167 @@ title: "Reproducible Research: Peer Assessment 1"
 output: 
   html_document:
     keep_md: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 
 ## Loading and preprocessing the data
 
+```{r libraries and setup}
+library(tidyverse)
+library(lubridate)
+library(knitr)
+
+theme_set(theme_minimal()) #Change the setup for ggplot graphics.
+
+knitr::opts_chunk$set(echo = TRUE,
+                      dev.args = list(png = list(type = "cairo"))) #Added echo so all code is visible, and dev.args for prettier graphics.
+```
+
+```{r load and preprocessing data}
+
+unzip("C:/Users/bsmor/OneDrive/Dokumenter/Reproducible_research/RepData_PeerAssessment1-master/activity.zip") 
+
+dt <- read_csv("activity.csv")
+```
 
 
 ## What is mean total number of steps taken per day?
 
+```{r}
+dt %>% 
+  group_by(date) %>% 
+  summarise("Total steps" = sum(steps))
+```
+
+### histogram of the total amount of steps.
+
+```{r}
+dt %>% 
+  group_by(date) %>% 
+  summarise("total_steps"= sum(steps)) %>% 
+  ggplot(aes(total_steps)) +
+  geom_histogram()
+```
+
+
+
+In order to calculate the mean and median, we have to remove the missing values.
+
+```{r}
+dt %>% 
+  group_by(date) %>% 
+  summarise("total_steps" = sum(steps)) %>% 
+  na.omit() %>% 
+  summarise(mean(total_steps), median(total_steps))
+```
+
 
 
 ## What is the average daily activity pattern?
+
+A line diagram showing the mean of the intervals.
+```{r}
+dt %>% 
+  group_by(interval) %>% 
+  na.omit() %>% 
+  summarise(Mean = mean(steps)) %>% 
+  ggplot(aes(interval, Mean)) +
+  geom_line()
+```
+
+
+Interval 835 has the highest mean.
+```{r}
+dt %>% 
+  group_by(interval) %>% 
+  na.omit() %>% 
+  summarise(mean = mean(steps)) %>%
+  filter(mean == max(mean))
+```
 
 
 
 ## Imputing missing values
 
 
+There are 2304 missing values.
+
+```{r}
+sum(is.na(dt))
+```
+
+
+Here we replace the missing values with mean based on which interval the missing value is in. Futhermore we load the new data into the frame "no_na_dt".
+
+
+```{r}
+no_na_dt <- dt %>% 
+  group_by(interval) %>% 
+  mutate(steps = replace_na(steps, mean(steps, na.rm = TRUE))) %>% 
+  ungroup()
+```
+
+
+
+Histogram of the total number of steps taken each day
+
+```{r}
+no_na_dt %>% 
+  group_by(date) %>% 
+  summarise(total_steps = sum(steps)) %>% 
+  ggplot(aes(total_steps)) +
+  geom_histogram()
+```
+
+The mean and median total number of steps taken per day. The values are close to the original values, but there is a difference. 
+
+```{r}
+no_na_dt %>% 
+  group_by(date) %>% 
+  summarise(total_steps = sum(steps)) %>% 
+  summarise(mean(total_steps), median(total_steps))
+```
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Yes, there are more steps in the earlier intervals in the weekdays. However across all intervals the weekend has more steps.
+
+
+```{r}
+no_na_dt %>% 
+  mutate(weekday = wday(date, label =F),
+         weekday = case_when(weekday >= 2 & weekday <= 6 ~ 1,
+                             weekday == 1 | weekday == 7 ~ 2),
+         weekday = factor(weekday, levels = c(1:2), labels = c("Weekday", "Weekend"))) %>%
+  group_by(weekday, interval) %>% 
+  summarise(mean = mean(steps)) %>% 
+  ggplot(aes(interval, mean)) +
+  geom_line() +
+  facet_grid(row = vars(weekday))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
